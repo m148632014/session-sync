@@ -17,9 +17,9 @@ session-sync - 统一会话同步工具
 命令 (command):
 
   Codex 工具:
-    codex status [--codex-home PATH]
-    codex sync [--provider ID] [--codex-home PATH]
-    codex switch <provider-id> [--codex-home PATH]
+    codex status [--codex-home PATH] [--workdir PATH]
+    codex sync [--provider ID] [--codex-home PATH] [--workdir PATH]
+    codex switch <provider-id> [--codex-home PATH] [--workdir PATH]
     codex restore <backup-dir> [--codex-home PATH]
     codex prune-backups [--keep N] [--codex-home PATH]
 
@@ -30,11 +30,19 @@ session-sync - 统一会话同步工具
   --help, -h               - 显示此帮助信息
   --version, -v            - 显示版本号
 
+常用选项:
+  --codex-home PATH        - 指定 Codex 主目录（默认 ~/.codex）
+  --workdir PATH           - 只处理指定工作目录的会话（Codex only）
+  --provider ID            - 指定 provider（codex sync/switch）
+  --keep N                 - 保留最近 N 个备份（codex prune-backups）
+
 示例:
   session-sync codex status
+  session-sync codex status --workdir /Users/you/my-project
+  session-sync codex sync
+  session-sync codex sync --workdir /Users/you/my-project
+  session-sync codex sync --provider openai --workdir /Users/you/my-project
   session-sync claude sync
-  session-sync codex sync --provider openai
-  session-sync codex switch anthropic
 `);
 }
 
@@ -130,7 +138,10 @@ async function main() {
 
       if (command === 'status') {
         const { getStatus, renderStatus } = codexService;
-        const status = await getStatus({ codexHome: flags['codex-home'] });
+        const status = await getStatus({
+          codexHome: flags['codex-home'],
+          workdir: flags.workdir  // 按工作目录过滤
+        });
         console.log(renderStatus(status));
         return;
       }
@@ -140,6 +151,7 @@ async function main() {
         const result = await runSync({
           codexHome: flags['codex-home'],
           provider: flags.provider,
+          workdir: flags.workdir,  // 按工作目录过滤
           keepCount: parseInt(flags.keep || '5', 10),
           onProgress: (event) => {
             if (event?.message) {

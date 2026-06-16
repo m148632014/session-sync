@@ -16,6 +16,54 @@ import { createBackupDir, backupPath } from '../../services/backup-restore.js';
  * - 将 Claude-3p 会话备份到 Official
  * - 创建 Junction/Symlink 建立会话共享
  */
+/**
+ * 按工作目录分组会话
+ */
+function groupSessionsByWorkdir(sessions) {
+  const groups = {};
+
+  for (const session of sessions) {
+    const workdir = session.workdir || session.cwd || '(无工作目录)';
+    if (!groups[workdir]) {
+      groups[workdir] = [];
+    }
+    groups[workdir].push(session);
+  }
+
+  // 按工作目录排序（无工作目录放在最后）
+  return Object.entries(groups).sort((a, b) => {
+    if (a[0] === '(无工作目录)') return 1;
+    if (b[0] === '(无工作目录)') return -1;
+    return a[0].localeCompare(b[0]);
+  });
+}
+
+/**
+ * 格式化会话列表，按工作目录分组显示
+ */
+function formatSessionsByWorkdir(sessions, maxPerGroup = 5) {
+  const groups = groupSessionsByWorkdir(sessions);
+  const lines = [];
+
+  for (const [workdir, groupSessions] of groups) {
+    lines.push(`\n    📁 ${workdir}`);
+
+    const displayed = groupSessions.slice(0, maxPerGroup);
+    for (const s of displayed) {
+      const title = s.title || '(无标题)';
+      const model = s.model || '';
+      const truncTitle = title.length > 35 ? title.substring(0, 32) + '...' : title;
+      lines.push(`       • "${truncTitle}" (${model})`);
+    }
+
+    if (groupSessions.length > maxPerGroup) {
+      lines.push(`       ... 及其他 ${groupSessions.length - maxPerGroup} 个会话`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
 export async function syncClaudeDesktopSessions() {
   logger.title('Claude Desktop 会话同步');
 
@@ -55,39 +103,23 @@ export async function syncClaudeDesktopSessions() {
   logger.success(`Official Workspace: ${officialWs}`);
   logger.success(`Claude-3p Workspace: ${claude3pWs}`);
 
-  // 3. 列出两侧现有会话
-  logger.section('3️⃣  列举现有会话');
+  // 3. 列出两侧现有会话（按工作目录分组）
+  logger.section('3️⃣  列举现有会话（按工作目录分组）');
   const officialSessions = listSessionFiles(officialWs);
   const claude3pSessions = listSessionFiles(claude3pWs);
 
   logger.info(`Official 会话数: ${officialSessions.length}`);
   if (officialSessions.length > 0) {
-    logger.list(
-      officialSessions.slice(0, 5).map((s) => {
-        const title = s.title || '(无标题)';
-        const model = s.model || '';
-        const truncTitle = title.length > 40 ? title.substring(0, 37) + '...' : title;
-        return `"${truncTitle}" (${model})`;
-      })
-    );
-    if (officialSessions.length > 5) {
-      logger.info(`  ... 及其他 ${officialSessions.length - 5} 个会话`);
-    }
+    console.log(formatSessionsByWorkdir(officialSessions));
+  } else {
+    logger.info('  (空)');
   }
 
   logger.info(`Claude-3p 会话数: ${claude3pSessions.length}`);
   if (claude3pSessions.length > 0) {
-    logger.list(
-      claude3pSessions.slice(0, 5).map((s) => {
-        const title = s.title || '(无标题)';
-        const model = s.model || '';
-        const truncTitle = title.length > 40 ? title.substring(0, 37) + '...' : title;
-        return `"${truncTitle}" (${model})`;
-      })
-    );
-    if (claude3pSessions.length > 5) {
-      logger.info(`  ... 及其他 ${claude3pSessions.length - 5} 个会话`);
-    }
+    console.log(formatSessionsByWorkdir(claude3pSessions));
+  } else {
+    logger.info('  (空)');
   }
 
   // 4. 检查是否已经是 junction
