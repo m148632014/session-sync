@@ -16,6 +16,10 @@ session-sync codex status
 
 # 2️⃣ 同步会话（修复命令）
 session-sync codex sync [--provider ID]
+
+# 💡 新增：按工作目录过滤（可选）
+session-sync codex status --workdir /path/to/project
+session-sync codex sync --workdir /path/to/project
 ```
 
 ### Claude Desktop - 1 个命令
@@ -23,6 +27,7 @@ session-sync codex sync [--provider ID]
 ```bash
 # 同步 Official 和 Claude-3p 会话
 session-sync claude sync
+# 💡 新增：自动按工作目录分组显示会话
 ```
 
 ---
@@ -175,15 +180,71 @@ $ session-sync claude sync
 
 ---
 
+## 🆕 工作目录过滤（项目级别管理）
+
+### Claude Desktop：按工作目录分组显示
+
+`session-sync claude sync` 现在自动按工作目录分组列表会话：
+
+```
+3️⃣  列举现有会话（按工作目录分组）
+ℹ Official 会话数: 5
+
+    📁 /Users/you/projects/my-app
+       • "API server refactor" (claude-3-sonnet)
+       • "Database schema" (claude-3-opus)
+
+    📁 /Users/you/projects/website
+       • "React components" (claude-3-sonnet)
+
+    📁 (无工作目录)
+       • "Random notes" (claude-3-haiku)
+       ... 及其他 1 个会话
+```
+
+**优势**：
+- 清楚看到各个项目的会话分布
+- 快速定位特定项目的会话
+- 了解会话是否已关联工作目录
+
+### Codex Desktop：按工作目录过滤
+
+使用 `--workdir` 参数按项目过滤会话：
+
+```bash
+# 只检查 /Users/you/projects/my-app 的会话状态
+session-sync codex status --workdir /Users/you/projects/my-app
+
+# 只同步 /Users/you/projects/my-app 的会话
+session-sync codex sync --workdir /Users/you/projects/my-app
+
+# 同步特定项目并指定 provider
+session-sync codex sync --provider openai --workdir /Users/you/projects/my-app
+```
+
+**优势**：
+- 避免误操作：只修改特定项目的会话
+- 降低风险：其他项目的会话保持不变
+- 精准控制：按项目选择性同步
+
+**默认行为**（不指定 `--workdir`）：
+- 诊断和同步所有项目的会话
+- 向后兼容，旧命令继续工作
+
+---
+
 ## 完整命令列表
 
 ### Codex 命令（按使用频率）
 
 | 命令 | 场景 | 说明 |
 |------|------|------|
-| `session-sync codex status` | ⭐ 诊断 | 检查会话可见性状态 |
-| `session-sync codex sync` | ⭐ 修复 | 同步会话到当前 provider |
-| `session-sync codex sync --provider openai` | 切换并同步 | 指定 provider |
+| `session-sync codex status` | ⭐ 诊断 | 检查会话可见性状态（全局） |
+| `session-sync codex status --workdir PATH` | 📁 项目诊断 | 只诊断指定项目的会话 |
+| `session-sync codex sync` | ⭐ 修复 | 同步会话到当前 provider（全局） |
+| `session-sync codex sync --workdir PATH` | 📁 项目修复 | 只同步指定项目的会话 |
+| `session-sync codex sync --provider openai` | 切换并同步 | 指定 provider（全局） |
+| `session-sync codex sync --provider openai --workdir PATH` | 🎯 精准控制 | 指定 provider + 指定项目 |
 | `session-sync codex switch openai` | 高级 | 修改 config.toml 并同步 |
 | `session-sync codex restore <path>` | 恢复 | 从备份恢复 |
 | `session-sync codex prune-backups --keep 5` | 清理 | 删除旧备份，保留最近 5 个 |
@@ -308,6 +369,36 @@ session-sync codex restore ~/.codex/backups_state/provider-sync/2024-06-16T10-30
 
 # 3. 重新运行 sync
 session-sync codex sync
+```
+
+### 场景 4️⃣: 多项目工作，按项目管理会话
+
+```bash
+# 检查所有项目状态
+$ session-sync codex status
+# 显示所有项目的会话分布
+
+# 发现项目 A 有同步问题，但项目 B 正常
+# 只修复项目 A，避免影响项目 B
+$ session-sync codex sync --workdir /Users/you/projects/project-a
+
+# Claude Desktop 同步时，会看到按工作目录分组的会话
+$ session-sync claude sync
+# 输出：
+#   📁 /Users/you/projects/project-a
+#   📁 /Users/you/projects/project-b
+```
+
+### 场景 5️⃣: 不同项目使用不同 Provider
+
+```bash
+# 项目 A 使用 OpenAI
+$ session-sync codex sync --provider openai --workdir /Users/you/projects/project-a
+
+# 项目 B 使用 Anthropic
+$ session-sync codex sync --provider anthropic --workdir /Users/you/projects/project-b
+
+# 两个项目的会话分别使用各自的 provider，互不影响
 ```
 
 ---
