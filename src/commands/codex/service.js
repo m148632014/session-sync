@@ -137,6 +137,28 @@ export async function getStatus({ codexHome: explicitCodexHome } = {}) {
   };
 }
 
+/**
+ * 按工作目录分组会话
+ */
+function groupSessionsByWorkdir(sessions) {
+  const groups = {};
+
+  for (const session of sessions) {
+    const cwd = session.cwd || '(no workdir)';
+    if (!groups[cwd]) {
+      groups[cwd] = [];
+    }
+    groups[cwd].push(session);
+  }
+
+  // 按工作目录排序（no workdir 放在最后）
+  return Object.entries(groups).sort((a, b) => {
+    if (a[0] === '(no workdir)') return 1;
+    if (b[0] === '(no workdir)') return -1;
+    return a[0].localeCompare(b[0]);
+  });
+}
+
 export function renderStatus(status) {
   const lines = [
     `Codex home: ${status.codexHome}`,
@@ -166,12 +188,25 @@ export function renderStatus(status) {
   if (status.sqliteSessions?.length) {
     const activeSessions = status.sqliteSessions.filter((s) => !s.archived);
     if (activeSessions.length > 0) {
-      lines.push(`  Active sessions (${activeSessions.length}):`);
-      for (const s of activeSessions) {
-        const marker = s.model_provider === status.currentProvider ? "*" : " ";
-        const providerPadded = (s.model_provider ?? "?").padEnd(10);
-        const title = (s.title ?? "(no title)").slice(0, 60);
-        lines.push(`    ${marker} [${providerPadded}] ${title}`);
+      lines.push(`  Active sessions (${activeSessions.length}) - grouped by working directory:`);
+
+      // 按工作目录分组显示
+      const groups = groupSessionsByWorkdir(activeSessions);
+      for (const [workdir, sessions] of groups) {
+        lines.push(`    📁 ${workdir}`);
+
+        // 显示每个工作目录下的会话
+        for (const s of sessions.slice(0, 5)) {
+          const marker = s.model_provider === status.currentProvider ? "*" : " ";
+          const providerPadded = (s.model_provider ?? "?").padEnd(10);
+          const title = (s.title ?? "(no title)").slice(0, 50);
+          lines.push(`       ${marker} [${providerPadded}] ${title}`);
+        }
+
+        // 如果超过 5 个，显示 "及其他"
+        if (sessions.length > 5) {
+          lines.push(`       ... 及其他 ${sessions.length - 5} 个会话`);
+        }
       }
     }
   }
