@@ -134,10 +134,9 @@ async function main() {
   if (tool === 'codex') {
     // 动态加载 Codex 的 service 模块
     try {
-      const { default: codexService } = await import('./commands/codex/service.js');
+      const { getStatus, renderStatus, runSync, runSwitch, runRestore, runPruneBackups } = await import('./commands/codex/service.js');
 
       if (command === 'status') {
-        const { getStatus, renderStatus } = codexService;
         const status = await getStatus({
           codexHome: flags['codex-home'],
           workdir: flags.workdir  // 按工作目录过滤
@@ -147,7 +146,6 @@ async function main() {
       }
 
       if (command === 'sync') {
-        const { runSync } = codexService;
         const result = await runSync({
           codexHome: flags['codex-home'],
           provider: flags.provider,
@@ -167,7 +165,6 @@ async function main() {
 
       if (command === 'switch') {
         const provider = positionals[2] || flags.provider;
-        const { runSwitch } = codexService;
         const result = await runSwitch({
           codexHome: flags['codex-home'],
           provider,
@@ -184,7 +181,6 @@ async function main() {
 
       if (command === 'restore') {
         const backupDir = positionals[2] || flags.backup;
-        const { runRestore } = codexService;
         const result = await runRestore({
           codexHome: flags['codex-home'],
           backupDir,
@@ -198,7 +194,6 @@ async function main() {
       }
 
       if (command === 'prune-backups') {
-        const { runPruneBackups } = codexService;
         const result = await runPruneBackups({
           codexHome: flags['codex-home'],
           keepCount: parseInt(flags.keep || '5', 10),
